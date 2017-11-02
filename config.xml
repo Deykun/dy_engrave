@@ -2,7 +2,7 @@
 <module>
     <name>Dy_Engrave</name>
     <displayName><![CDATA[Engrave]]></displayName>
-    <version><![CDATA[0.2.0]]></version>
+    <version><![CDATA[0.3.0]]></version>
     <description><![CDATA[Additional engraving for products.]]></description>
     <author><![CDATA[Deykun]]></author>
     <tab><![CDATA[front_office_features]]></tab>

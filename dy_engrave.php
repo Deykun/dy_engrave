@@ -8,12 +8,16 @@ use PrestaShop\PrestaShop\Core\Module\WidgetInterface;
 class Dy_Engrave extends Module implements WidgetInterface
 {
     private $templateFile;
+	private $templates = array (
+        'product' => 'product.tpl',
+        'cart' => 'cart.tpl',
+    );
 
     public function __construct()
     {
         $this->name = 'dy_engrave';
         $this->author = 'Deykun';
-        $this->version = '0.2.0';
+        $this->version = '0.3.0';
         $this->need_instance = 0;
 
         $this->ps_versions_compliancy = [
@@ -26,8 +30,6 @@ class Dy_Engrave extends Module implements WidgetInterface
 
         $this->displayName = $this->trans('Engrave', array(), 'Modules.Engrave.Admin');
         $this->description = $this->trans('Additional engraving for products.', array(), 'Modules.Engrave.Admin');
-
-        $this->templateFile = 'module:dy_engrave/views/templates/hook/engraver.tpl';
     }
 
     public function install()
@@ -40,7 +42,7 @@ class Dy_Engrave extends Module implements WidgetInterface
 
         return parent::install()
 			&& $this->registerHook('displayHeader')
-            && $this->registerHook('displayOrderConfirmation2')	
+            && $this->registerHook('displayShoppingCart')	
             && $this->registerHook('displayProductAdditionalInfo')	
         ;
     }
@@ -206,24 +208,51 @@ class Dy_Engrave extends Module implements WidgetInterface
 
     public function renderWidget($hookName = null, array $configuration = [])
     {
-        if (!$this->isCached($this->templateFile, $this->getCacheId('dy_engrave'))) {
-            $variables = $this->getWidgetVariables($hookName, $configuration);
+		$productID = $this->getProductID($configuration);
+		$variables = $this->getWidgetVariables($hookName, $configuration);
+		
+		if ($productID > 0) {
+            $templateFile = $this->templates[$variables['template']];
+        } else {
+			/* for example displayShoppingCart, displayShoppingCartFooter */
+			
+//			$products = $params['cart']->getProducts(true);
+			
+			
+			$engraverFeatureID = $this->getConfigFieldsValues()['ENGRAVER_FEATURE_ID'];	
 
-            if (empty($variables)) {
-                return false;
+			$test = 'no';
+			
+//			$test = new Cart($configuration['cart']->id);
+			$param['cart'] = new Cart($configuration['cart']->id);
+			$test = $param['cart']->getProducts(true);
+			
+			
+//			foreach($configuration['cart']->_products as $product) {
+			
+//				foreach($product['feature'] as $feature) {
+//					if ($feature['id_feature'] == $engraverFeatureID && $feature['value'] != '' && strtolower($feature['value']) != 'no') {
+//						$test .= 'yes';
+//					}
+//				}
 				
-            }
-
-            $this->smarty->assign($variables);
+//			}
+			
+			
+			
+			
+            $templateFile = $this->templates['cart'];
         }
-
-        return $this->fetch($this->templateFile, $this->getCacheId('dy_engrave'));
+		
+		$this->smarty->assign('engraver', $variables);
+		
+		return $this->fetch('module:'.$this->name.'/views/templates/hook/'.$templateFile);
     }
 
 	private function getProductID($configuration)
     {
         if (empty($configuration['product'])) {
-            return false;
+            return 0;
         }
 
         $product = $configuration['product'];
@@ -235,16 +264,17 @@ class Dy_Engrave extends Module implements WidgetInterface
         $id_product = $product['id_product'];
 
         if (!empty($id_product)) {
-            return array(
-                'id_product' => $id_product
-            );
+            return $id_product;
         }
 
-        return false;
+        return 0;
     }
 	
-	private function engraverEnableInProduct($productFeatures)
+	private function engraverEnableInProduct($productID)
 	{
+		$featuresObj = new Product($productID);
+		$productFeatures = $featuresObj->getFrontFeatures($this->context->language->id);
+		
 		$engraverFeatureID = $this->getConfigFieldsValues()['ENGRAVER_FEATURE_ID'];	
 		
 		foreach($productFeatures as $feature) {
@@ -262,26 +292,32 @@ class Dy_Engrave extends Module implements WidgetInterface
 	
     public function getWidgetVariables($hookName = null, array $configuration = [])
     {
-		$params = $this->getProductID($configuration);
+		$engraver = array();
+		$productID = $this->getProductID($configuration);
+		$cartID = $configuration['cart']->id;
 		
-		if ($params['id_product']) {
-					
-			$engraver = array();
-
-			$engraver['id_product'] = $params['id_product'];
-
-			$featuresObj = new Product($engraver['id_product']);
-			$productFeatures = $featuresObj->getFrontFeatures($this->context->language->id);
-
-			$engraver['enable'] = $this->engraverEnableInProduct($productFeatures);
-
-
-			return array(
-				'engraver' => $engraver,
-			);
-		} else {
-			return false;
+		if ($productID > 0) {
+			$engraver['template'] = 'product';
+			$engraver['product_id'] = $productID;
+			$engraver['enable'] = $this->engraverEnableInProduct($productID);		
+        } else if ($cartID > 0) {
+			
+			$cartObj = new Cart($cartID);
+			$products = $cartObj->getProducts(true);
+			$engraver['enable'] = false;
+			
+			$engraver['enablein'] = 0;
+			$engraver['total'] = count($products);
+			
+			foreach($products as $product) {
+				if ($this->engraverEnableInProduct($product['id_product'])) {
+					$engraver['enable'] = true;
+					$engraver['enablein'] += 1;
+				}
+			}
 		}
+		
+		return $engraver;
 
     }
 }
