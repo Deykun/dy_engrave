@@ -17,7 +17,7 @@ class Dy_Engrave extends Module implements WidgetInterface
     {
         $this->name = 'dy_engrave';
         $this->author = 'Deykun';
-        $this->version = '0.3.0';
+        $this->version = '0.3.5';
         $this->need_instance = 0;
 
         $this->ps_versions_compliancy = [
@@ -56,6 +56,7 @@ class Dy_Engrave extends Module implements WidgetInterface
 	
 	public function hookdisplayHeader($params)
     {
+		$this->context->controller->registerStylesheet('modules-engraver', 'modules/'.$this->name.'/css/engrave.css', ['media' => 'all', 'priority' => 150]);
         $this->context->controller->registerJavascript('modules-engraver', 'modules/'.$this->name.'/js/engrave.js', ['position' => 'bottom', 'priority' => 150]);
     }
 
@@ -208,41 +209,9 @@ class Dy_Engrave extends Module implements WidgetInterface
 
     public function renderWidget($hookName = null, array $configuration = [])
     {
-		$productID = $this->getProductID($configuration);
 		$variables = $this->getWidgetVariables($hookName, $configuration);
 		
-		if ($productID > 0) {
-            $templateFile = $this->templates[$variables['template']];
-        } else {
-			/* for example displayShoppingCart, displayShoppingCartFooter */
-			
-//			$products = $params['cart']->getProducts(true);
-			
-			
-			$engraverFeatureID = $this->getConfigFieldsValues()['ENGRAVER_FEATURE_ID'];	
-
-			$test = 'no';
-			
-//			$test = new Cart($configuration['cart']->id);
-			$param['cart'] = new Cart($configuration['cart']->id);
-			$test = $param['cart']->getProducts(true);
-			
-			
-//			foreach($configuration['cart']->_products as $product) {
-			
-//				foreach($product['feature'] as $feature) {
-//					if ($feature['id_feature'] == $engraverFeatureID && $feature['value'] != '' && strtolower($feature['value']) != 'no') {
-//						$test .= 'yes';
-//					}
-//				}
-				
-//			}
-			
-			
-			
-			
-            $templateFile = $this->templates['cart'];
-        }
+        $templateFile = $this->templates[$variables['template']];
 		
 		$this->smarty->assign('engraver', $variables);
 		
@@ -298,21 +267,35 @@ class Dy_Engrave extends Module implements WidgetInterface
 		
 		if ($productID > 0) {
 			$engraver['template'] = 'product';
+			
 			$engraver['product_id'] = $productID;
-			$engraver['enable'] = $this->engraverEnableInProduct($productID);		
+			$engraver['enable'] = $this->engraverEnableInProduct($productID);	
+			
         } else if ($cartID > 0) {
+			$engraver['template'] = 'cart';
+			$engraver['enable'] = false;
 			
 			$cartObj = new Cart($cartID);
 			$products = $cartObj->getProducts(true);
-			$engraver['enable'] = false;
-			
 			$engraver['enablein'] = 0;
 			$engraver['total'] = count($products);
+			
+			$engraver['products'] = array();
 			
 			foreach($products as $product) {
 				if ($this->engraverEnableInProduct($product['id_product'])) {
 					$engraver['enable'] = true;
 					$engraver['enablein'] += 1;
+					
+					$tempproduct = array('');
+					$tempproduct['id'] = $product['id_product'];
+					$tempproduct['name'] = $product['name'];
+					$tempproduct['attributes'] = $product['attributes'];
+					
+					$productCover = Product::getCover($product['id_product']);
+					$tempproduct['cover_url'] = $this->context->link->getImageLink($product['link_rewrite'], $productCover['id_image'], ImageType::getFormatedName('home'));
+					
+					array_push($engraver['products'], $tempproduct);
 				}
 			}
 		}

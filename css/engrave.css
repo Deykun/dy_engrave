@@ -1,0 +1,19 @@
+#engraver-list {
+	padding: 10px;
+}
+
+#engraver-list * {
+	max-width: 100%;
+}
+
+.btn-engrave {
+	background-color: #e6e18a;
+	border: none;
+	font-size: 16px;
+	padding: 7px 12px;
+	width: 100%;
+}
+
+#engraveThis {
+	width: 100%;
+}
