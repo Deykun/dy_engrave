@@ -17,7 +17,7 @@ class Dy_Engrave extends Module implements WidgetInterface
     {
         $this->name = 'dy_engrave';
         $this->author = 'Deykun';
-        $this->version = '0.3.5';
+        $this->version = '0.4';
         $this->need_instance = 0;
 
         $this->ps_versions_compliancy = [
@@ -37,8 +37,8 @@ class Dy_Engrave extends Module implements WidgetInterface
         $this->_clearCache('*');
 
         Configuration::updateValue('ENGRAVER_FEATURE_ID', 8);
-        Configuration::updateValue('HOME_FEATURED_ENGRAVERCAT', (int) Context::getContext()->shop->getCategory());
-        Configuration::updateValue('HOME_FEATURED_ENGRAVERRANDOMIZE', false);
+        Configuration::updateValue('ENGRAVER_PRODUCT_ID', 9);
+        Configuration::updateValue('ENGRAVER_SPACES', false);
 
         return parent::install()
 			&& $this->registerHook('displayHeader')
@@ -101,12 +101,12 @@ class Dy_Engrave extends Module implements WidgetInterface
                 $errors[] = $this->trans('ID of feature is invalid. Please enter a positive number.', array(), 'Modules.Engrave.Admin');
             }
 
-            $cat = Tools::getValue('HOME_FEATURED_ENGRAVERCAT');
-            if (!Validate::isInt($cat) || $cat <= 0) {
-                $errors[] = $this->trans('The category ID is invalid. Please choose an existing category ID.', array(), 'Modules.Engrave.Admin');
+            $pid = Tools::getValue('ENGRAVER_PRODUCT_ID');
+            if (!Validate::isInt($pid) || $pid <= 0) {
+                $errors[] = $this->trans('ID is invalid. Please enter a positive number.', array(), 'Modules.Engrave.Admin');
             }
 
-            $rand = Tools::getValue('HOME_FEATURED_ENGRAVERRANDOMIZE');
+            $rand = Tools::getValue('ENGRAVER_SPACES');
             if (!Validate::isBool($rand)) {
                 $errors[] = $this->trans('Invalid value for the "randomize" flag.', array(), 'Modules.Engrave.Admin');
             }
@@ -114,8 +114,8 @@ class Dy_Engrave extends Module implements WidgetInterface
                 $output = $this->displayError(implode('<br />', $errors));
             } else {
                 Configuration::updateValue('ENGRAVER_FEATURE_ID', (int) $fid);
-                Configuration::updateValue('HOME_FEATURED_ENGRAVERCAT', (int) $cat);
-                Configuration::updateValue('HOME_FEATURED_ENGRAVERRANDOMIZE', (bool) $rand);
+                Configuration::updateValue('ENGRAVER_PRODUCT_ID', (int) $pid);
+                Configuration::updateValue('ENGRAVER_SPACES', (bool) $rand);
 
                 $this->_clearCache('*');
 
@@ -135,28 +135,27 @@ class Dy_Engrave extends Module implements WidgetInterface
                     'icon' => 'icon-cogs',
                 ),
 
-                'description' => $this->trans('To add products to your homepage, simply add them to the corresponding product category (default: "Home").', array(), 'Modules.Engrave.Admin'),
+                'description' => $this->trans('Hi!', array(), 'Modules.Engrave.Admin'),
                 'input' => array(
+					array(
+                        'type' => 'text',
+                        'label' => $this->trans('Engraver product ID', array(), 'Modules.Engrave.Admin'),
+                        'name' => 'ENGRAVER_PRODUCT_ID',
+                        'class' => 'fixed-width-xs',
+                        'desc' => $this->trans('Add or find engraver product and puh here ID.', array(), 'Modules.Engrave.Admin'),
+                    ),
                     array(
                         'type' => 'text',
-                        'label' => $this->trans('Engraver feature ID.', array(), 'Modules.Engrave.Admin'),
+                        'label' => $this->trans('Engraver feature ID', array(), 'Modules.Engrave.Admin'),
                         'name' => 'ENGRAVER_FEATURE_ID',
                         'class' => 'fixed-width-xs',
                         'desc' => $this->trans('Add or find engraver feature and put here ID.', array(), 'Modules.Engrave.Admin'),
                     ),
                     array(
-                        'type' => 'text',
-                        'label' => $this->trans('Category from which to pick products to be displayed', array(), 'Modules.Engrave.Admin'),
-                        'name' => 'HOME_FEATURED_ENGRAVERCAT',
-                        'class' => 'fixed-width-xs',
-                        'desc' => $this->trans('Choose the category ID of the products that you would like to display on homepage (default: 2 for "Home").', array(), 'Modules.Engrave.Admin'),
-                    ),
-                    array(
                         'type' => 'switch',
-                        'label' => $this->trans('Randomly display featured products', array(), 'Modules.Engrave.Admin'),
-                        'name' => 'HOME_FEATURED_ENGRAVERRANDOMIZE',
+                        'label' => $this->trans('Count space as a character', array(), 'Modules.Engrave.Admin'),
+                        'name' => 'ENGRAVER_SPACES',
                         'class' => 'fixed-width-xs',
-                        'desc' => $this->trans('Enable if you wish the products to be displayed randomly (default: no).', array(), 'Modules.Engrave.Admin'),
                         'values' => array(
                             array(
                                 'id' => 'active_on',
@@ -202,8 +201,8 @@ class Dy_Engrave extends Module implements WidgetInterface
     {
         return array(
             'ENGRAVER_FEATURE_ID' => Tools::getValue('ENGRAVER_FEATURE_ID', (int) Configuration::get('ENGRAVER_FEATURE_ID')),
-            'HOME_FEATURED_ENGRAVERCAT' => Tools::getValue('HOME_FEATURED_ENGRAVERCAT', (int) Configuration::get('HOME_FEATURED_ENGRAVERCAT')),
-            'HOME_FEATURED_ENGRAVERRANDOMIZE' => Tools::getValue('HOME_FEATURED_ENGRAVERRANDOMIZE', (bool) Configuration::get('HOME_FEATURED_ENGRAVERRANDOMIZE')),
+            'ENGRAVER_PRODUCT_ID' => Tools::getValue('ENGRAVER_PRODUCT_ID', (int) Configuration::get('ENGRAVER_PRODUCT_ID')),
+            'ENGRAVER_SPACES' => Tools::getValue('ENGRAVER_SPACES', (bool) Configuration::get('ENGRAVER_SPACES')),
         );
     }
 
@@ -298,7 +297,37 @@ class Dy_Engrave extends Module implements WidgetInterface
 					array_push($engraver['products'], $tempproduct);
 				}
 			}
+			
+			/* Engraver prices */
+			$engraverProductID = $this->getConfigFieldsValues()['ENGRAVER_PRODUCT_ID'];	
+		
+			$engreverprices = array();
+
+			$engraverbaseprice = Product::getPriceStatic($engraverProductID); 
+			
+			$engreverprices['base'] = $engraverbaseprice;
+
+			$engraverProduct = new Product($engraverProductID);
+			$engraverProductCombinations = $engraverProduct->getAttributeCombinations($this->context->language->id);
+			$engraverCombinations = array();
+
+
+			foreach( $engraverProductCombinations as $combination ) {   
+				$combinationImpact = array();
+				$combinationImpact['id_product_attribute'] = $combination['id_product_attribute'];
+				$combinationImpact['id_attribute'] = $combination['id_attribute'];
+				$combinationImpact['value'] = (int) $combination['attribute_name'];
+				$combinationImpact['price_impact'] = $combination['price'];
+				
+				array_push($engraverCombinations, $combinationImpact);
+			}
+				
+			$engreverprices['combinations'] = $engraverCombinations;
+
+			$engraver['price'] = $engreverprices;
 		}
+		
+
 		
 		return $engraver;
 
