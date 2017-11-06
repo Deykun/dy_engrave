@@ -17,7 +17,7 @@ class Dy_Engrave extends Module implements WidgetInterface
     {
         $this->name = 'dy_engrave';
         $this->author = 'Deykun';
-        $this->version = '0.4';
+        $this->version = '0.5';
         $this->need_instance = 0;
 
         $this->ps_versions_compliancy = [
@@ -35,11 +35,52 @@ class Dy_Engrave extends Module implements WidgetInterface
     public function install()
     {
         $this->_clearCache('*');
-
-        Configuration::updateValue('ENGRAVER_FEATURE_ID', 8);
-        Configuration::updateValue('ENGRAVER_PRODUCT_ID', 9);
+        
+		Configuration::updateValue('ENGRAVER_FEATURE_ID', 8);
         Configuration::updateValue('ENGRAVER_SPACES', false);
 
+		$lang = Configuration::get('PS_LANG_DEFAULT');
+		
+		
+		/* Add Engraver Attribute */
+			
+			$attributeGroup = new AttributeGroup;
+			$attributeGroup->name = [$lang => 'Engraver characters'];
+			$attributeGroup->public_name = [$lang => 'Engraver characters'];
+			$attributeGroup->is_color_group = 0;
+			$attributeGroup->group_type = 'select';
+			$attributeGroup->add();
+			
+			$engraverAttributeID = $attributeGroup->id;
+			
+		/* Add Engraver Attribute Values */
+		
+			for ($i = 0; $i <= 175; $i++) {
+				$attribute = new Attribute();
+				$attribute->name = [$lang => $i];
+				$attribute->id_attribute_group = $engraverAttributeID;
+				$attribute->add();
+			}	
+		
+		/* Add Engraver Product */
+
+			$product = new Product();
+			$product->name = [$lang => 'Engraver'];
+			$product->link_rewrite = [$lang => 'engraver'];
+			$product->price = 12.00;
+			$product->quantity = 1000;
+		
+			if ($product->add()) {
+				StockAvailable::setQuantity((int)$product->id, 0, $product->quantity, Context::getContext()->shop->id);	
+			}
+
+			$product->update();
+		
+			Configuration::updateValue('ENGRAVER_PRODUCT_ID', $product->id);
+		
+		/* TO DO connect attribute with product in combinations */
+		
+		
         return parent::install()
 			&& $this->registerHook('displayHeader')
             && $this->registerHook('displayShoppingCart')	
@@ -310,7 +351,6 @@ class Dy_Engrave extends Module implements WidgetInterface
 			$engraverProduct = new Product($engraverProductID);
 			$engraverProductCombinations = $engraverProduct->getAttributeCombinations($this->context->language->id);
 			$engraverCombinations = array();
-
 
 			foreach( $engraverProductCombinations as $combination ) {   
 				$combinationImpact = array();

@@ -1,10 +1,10 @@
   {if $engraver.enable}
   	<div id="engraver-list">
   	
-		<button id="add-engrave" class="btn-engrave">Add engraving!</button>
+		<button id="add-engrave" class="btn-engrave">{l s='Add engraving!' d='Modules.Engrave.Admin'}</button>
 
 		<div id="form-engrave" class="close">
-			<div>
+			<div>				
 				<h2>{l s='Engraver' d='Modules.Engrave.Admin'}</h2>
 			
 				<div>
@@ -33,6 +33,8 @@
 				<div>
 					<label for="text-engrave">{l s='Text' d='Modules.Engrave.Admin'}</label>
 					<input id="text-engrave" type="text" placeholder="i <3 u" maxlength="{(count($engraver.price.combinations)-1)}">
+					
+					<button class="btn-engrave">{l s='Add engraving!' d='Modules.Engrave.Admin'}!</button>
 				</div>
 				
 				<ul id="impact-engrave" style="display:none;">
